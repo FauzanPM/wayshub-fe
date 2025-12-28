@@ -1,6 +1,6 @@
 def branch = "master"
 def remote = "origin"
-def directory = "~/docker/wayshub-frontend"
+def directory = "~/jenkins/dumbflix-frontend"
 def server = "fauzan@103.103.23.208"
 def cred = "fauzanssh"
 
