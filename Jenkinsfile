@@ -29,7 +29,7 @@ pipeline{
                         sshagent([cred]){
                                 sh """ssh -o StrictHostKeyChecking=no ${server} << EOF
                                 cd ${directory}
-				docker build -t dumbflix-fe .
+				docker build -t wayshub-fe .
                                 exit
                                 EOF"""
                                 }
@@ -51,7 +51,7 @@ pipeline{
                      steps{
                         sshagent([cred]){
                                 sh """ssh -o StrictHostKeyChecking=no ${server} << EOF
-				docker run -d -p 3001:3000 --tty --name frontend dumbflix-fe
+				docker run -d -p 3001:3000 --tty --name frontend wayshub-fe
                                 exit
                                 EOF"""
                                 }
