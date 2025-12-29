@@ -1,45 +1,72 @@
 def branch = "main"
 def remote = "origin"
-def directory = "~/docker/wayshub-frontend"
+def directory = "/home/fauzan/docker/wayshub-frontend"
 def server = "fauzan@103.103.23.208"
 def cred = "fauzanssh"
 
-pipeline{
-	agent any
-	stages{
-		stage('repo pull'){
-		     steps{
-			sshagent([cred]){
-				sh """ssh -o StrictHostKeyChecking=no ${server} << EOF
-				cd ${directory}
-				git pull ${remote} ${branch}
-				exit
-				EOF"""
-				}
-			}
-		}
+pipeline {
+    agent any
 
-                stage('docker build'){
-                     steps{
-                        sshagent([cred]){
-                                sh """ssh -o StrictHostKeyChecking=no ${server} << EOF
-                                cd ${directory}
-				docker build -t dumbflix-fe .
-                                exit
-                                EOF"""
-                                }
-                        }
-                }
+    triggers {
+        githubPush()
+    }
 
-                stage('docker run'){
-                     steps{
-                        sshagent([cred]){
-                                sh """ssh -o StrictHostKeyChecking=no ${server} << EOF
-				docker run -d -p 3001:3000 --tty --name frontend dumbflix-fe
-                                exit
-                                EOF"""
-                                }
-                        }
+    stages {
+
+        stage('Repo Sync') {
+            steps {
+                sshagent([cred]) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${server} << EOF
+                    cd ${directory}
+                    git fetch ${remote}
+                    git reset --hard ${remote}/${branch}
+                    EOF
+                    """
                 }
-	}
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sshagent([cred]) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${server} << EOF
+                    cd ${directory}
+                    docker build -t wayshub-fe:latest .
+                    EOF
+                    """
+                }
+            }
+        }
+
+        stage('Stop & Remove Old Container') {
+            steps {
+                sshagent([cred]) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${server} << EOF
+                    docker stop wayshub-fe || true
+                    docker rm wayshub-fe || true
+                    EOF
+                    """
+                }
+            }
+        }
+
+        stage('Run New Container') {
+            steps {
+                sshagent([cred]) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${server} << EOF
+                    docker run -d \\
+                      --name wayshub-fe \\
+                      -p 3001:3000 \\
+                      wayshub-fe:latest
+                    EOF
+                    """
+                }
+            }
+        }
+    }
 }
+
