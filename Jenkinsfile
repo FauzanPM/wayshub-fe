@@ -1,72 +1,61 @@
 def branch = "main"
 def remote = "origin"
-def directory = "/home/fauzan/docker/wayshub-frontend"
+def directory = "~/docker/wayshub-frontend"
 def server = "fauzan@103.103.23.208"
 def cred = "fauzanssh"
 
-pipeline {
-    agent any
+pipeline{
+	agent any
 
-    triggers {
-        githubPush()
-    }
+	triggers {
+		githubPush()
+	}
 
-    stages {
+	stages{
+		stage('repo pull'){
+		     steps{
+			sshagent([cred]){
+				sh """ssh -o StrictHostKeyChecking=no ${server} << EOF
+				cd ${directory}
+				git pull ${remote} ${branch}
+				exit
+				EOF"""
+				}
+			}
+		}
 
-        stage('Repo Sync') {
-            steps {
-                sshagent([cred]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${server} << EOF
-                    cd ${directory}
-                    git fetch ${remote}
-                    git reset --hard ${remote}/${branch}
-                    EOF
-                    """
+                stage('docker build'){
+                     steps{
+                        sshagent([cred]){
+                                sh """ssh -o StrictHostKeyChecking=no ${server} << EOF
+                                cd ${directory}
+				docker build -t dumbflix-fe .
+                                exit
+                                EOF"""
+                                }
+                        }
                 }
-            }
-        }
 
-        stage('Docker Build') {
-            steps {
-                sshagent([cred]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${server} << EOF
-                    cd ${directory}
-                    docker build -t wayshub-fe:latest .
-                    EOF
-                    """
+                stage('hapus container lama'){
+                     steps{
+                        sshagent([cred]){
+                                sh """ssh -o StrictHostKeyChecking=no ${server} << EOF
+				docker rm -f frontend || true
+                                exit
+                                EOF"""
+                                }
+                        }
                 }
-            }
-        }
 
-        stage('Stop & Remove Old Container') {
-            steps {
-                sshagent([cred]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${server} << EOF
-                    docker stop wayshub-fe || true
-                    docker rm wayshub-fe || true
-                    EOF
-                    """
+                stage('docker run'){
+                     steps{
+                        sshagent([cred]){
+                                sh """ssh -o StrictHostKeyChecking=no ${server} << EOF
+				docker run -d -p 3001:3000 --tty --name frontend dumbflix-fe
+                                exit
+                                EOF"""
+                                }
+                        }
                 }
-            }
-        }
-
-        stage('Run New Container') {
-            steps {
-                sshagent([cred]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${server} << EOF
-                    docker run -d \\
-                      --name wayshub-fe \\
-                      -p 3001:3000 \\
-                      wayshub-fe:latest
-                    EOF
-                    """
-                }
-            }
-        }
-    }
+	}
 }
-
