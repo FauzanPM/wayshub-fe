@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-    baseURL: "http://api.fauzan.studentdumbways.my.id//api/v1"
+    baseURL: "http://103.103.23.208:5001//api/v1"
 });
 
 const setAuthToken = (token) => {
